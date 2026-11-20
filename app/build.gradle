@@ -10,8 +10,8 @@ android {
         applicationId 'ph.townmart.inventory'
         minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '1.1'
     }
 
     // One fixed key, so every new build installs over the old one and keeps the records.
