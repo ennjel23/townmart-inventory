@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'ph.townmart.inventory'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'ph.townmart.inventory'
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // One fixed key, so every new build installs over the old one and keeps the records.
+    signingConfigs {
+        townmart {
+            storeFile file('townmart.keystore')
+            storePassword 'townmart123'
+            keyAlias 'townmart'
+            keyPassword 'townmart123'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.townmart
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.townmart
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

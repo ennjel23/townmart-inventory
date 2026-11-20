@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f5f58">
+<title>Town Mart Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calm, clear stockroom tool for a mini-mart and coffee shop crew
+   IDEA: a shelf tag and a stock card: every item shows its count big, with a coloured status tag
+   PICTURE: the working app: counts in large numerals, status tags, movement history like a stock card
+   COLOUR and TYPE: shop teal header, coffee orange for the coffee section, amber low, red out; Outfit + Inter
+   LAYOUT: one phone column, header with section switch, bottom tabs, forms slide up as solid sheets */
+:root{color-scheme:light;--bg:#f4f6f5;--card:#ffffff;--ink:#14211f;--mute:#5d6b68;--line:#dfe5e3;--soft:#e8f1ef;
+--brand:#0f5f58;--brand2:#0b4a44;--onbrand:#ffffff;--coffee:#b85c12;--coffeebg:#fbeee2;--mart:#0f5f58;--martbg:#e3f0ee;
+--low:#a35f00;--lowbg:#fff1d6;--out:#c0261e;--outbg:#fde4e2;--ok:#1f6f4a;--okbg:#e2f3ea;--exp:#7a3fb0;--expbg:#f1e7fb}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#0f1514;--card:#18211f;--ink:#e9f0ee;--mute:#a2b1ad;--line:#2b3735;--soft:#1f2b29;
+--mart:#5cc2b6;--martbg:#173330;--coffee:#f0a35e;--coffeebg:#3a2716;--low:#f2b552;--lowbg:#3a2c10;--out:#ff8a80;--outbg:#3d1a18;--ok:#7fd3a8;--okbg:#16301f;--exp:#c9a2f0;--expbg:#2c1f3b}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0f1514;--card:#18211f;--ink:#e9f0ee;--mute:#a2b1ad;--line:#2b3735;--soft:#1f2b29;
+--mart:#5cc2b6;--martbg:#173330;--coffee:#f0a35e;--coffeebg:#3a2716;--low:#f2b552;--lowbg:#3a2c10;--out:#ff8a80;--outbg:#3d1a18;--ok:#7fd3a8;--okbg:#16301f;--exp:#c9a2f0;--expbg:#2c1f3b}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.app{max-width:600px;margin:0 auto;min-height:100vh;padding-bottom:120px}
+h1,h2,h3{font-family:Outfit,Inter,system-ui,sans-serif;margin:0;line-height:1.15}
+header{background:var(--brand);color:var(--onbrand);padding:14px 16px 16px}
+.hd{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;grid-column-gap:10px}
+.hd small{display:block;font-size:12px;font-weight:600;opacity:.8;letter-spacing:.02em}
+.hd h1{font-size:21px;font-weight:800;overflow-wrap:anywhere}
+.today{font-size:12px;font-weight:600;opacity:.85;text-align:right;white-space:nowrap}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-gap:4px;background:rgba(0,0,0,.18);border-radius:12px;padding:4px;margin-top:12px}
+.seg button{all:unset;box-sizing:border-box;cursor:pointer;text-align:center;min-height:38px;padding:6px 4px;border-radius:9px;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);line-height:1.2;display:flex;align-items:center;justify-content:center}
+.seg button[aria-pressed=true]{background:#fff;color:#0f5f58}
+main{padding:16px}
+.lead{font-size:14px;color:var(--mute);margin:0 0 12px}
+h2{font-size:22px;font-weight:800}
+h3{font-size:17px;font-weight:700;margin:22px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-gap:10px}
+.stat{all:unset;box-sizing:border-box;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:block;min-height:84px}
+.stat .n{display:block;white-space:nowrap;font:800 30px/1.1 Outfit,Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.stat .l{display:block;font-size:13px;font-weight:600;color:var(--mute);margin-top:4px}
+.stat.low .n{color:var(--low)}.stat.out .n{color:var(--out)}.stat.exp .n{color:var(--exp)}
+.value{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;grid-column-gap:12px}
+.value .big{display:block;font:800 28px/1.1 Outfit,Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fit{white-space:nowrap;overflow-wrap:normal}.fit.wrap{white-space:normal!important;overflow-wrap:anywhere!important}
+.value small{display:block;color:var(--mute);font-size:13px;font-weight:600}
+.split{font-size:13px;color:var(--mute);text-align:right;line-height:1.5}
+.rows{list-style:none;margin:0;padding:0}
+.row{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-column-gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);min-height:62px;background:var(--card)}
+.rows li:first-child .row{border-top-left-radius:14px;border-top-right-radius:14px}
+.rows li:last-child .row{border-bottom:0;border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+.rows{border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.row .nm{font-weight:700;font-size:16px;line-height:1.3;overflow-wrap:anywhere;display:block}
+.row .sub{display:block;font-size:13px;color:var(--mute);line-height:1.35;margin-top:2px;overflow-wrap:anywhere}
+.qty{text-align:right;white-space:nowrap}
+.qty b{font:800 20px/1.1 Outfit,Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.qty span{font-size:13px;color:var(--mute);margin-left:3px}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 8px;margin-top:4px;line-height:1.4;white-space:nowrap}
+.tag.ok{background:var(--okbg);color:var(--ok)}.tag.low{background:var(--lowbg);color:var(--low)}.tag.out{background:var(--outbg);color:var(--out)}.tag.exp{background:var(--expbg);color:var(--exp)}
+.tag.mart{background:var(--martbg);color:var(--mart)}.tag.coffee{background:var(--coffeebg);color:var(--coffee)}
+.tags{display:block;line-height:1.2}.tags .tag{margin-right:4px}
+.btn{min-height:46px;border-radius:12px;border:0;font:700 15px Inter,system-ui,sans-serif;padding:8px 14px;cursor:pointer;background:var(--soft);color:var(--ink);line-height:1.2}
+.btn.pri{background:var(--brand);color:#fff}.btn.in{background:#1f6f4a;color:#fff}.btn.outb{background:#b23a1e;color:#fff}.btn.ghost{background:transparent;border:2px solid var(--line)}
+.btn.danger{background:transparent;border:2px solid var(--outbg);color:var(--out)}
+.btn.sm{min-height:40px;font-size:14px;padding:6px 12px}.btn.wide{width:100%}
+.btn:focus-visible,.row:focus-visible,.stat:focus-visible,.seg button:focus-visible,nav button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.chip:focus-visible{outline:3px solid #2b8cff;outline-offset:2px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-gap:8px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-gap:8px}
+.tools{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-gap:8px;margin-bottom:10px}
+.chips{display:block;margin:0 -2px 10px}
+.chip{all:unset;box-sizing:border-box;cursor:pointer;display:inline-block;border:2px solid var(--line);background:var(--card);border-radius:99px;padding:6px 12px;font-size:14px;font-weight:600;margin:0 2px 6px;line-height:1.3}
+.chip[aria-pressed=true]{border-color:var(--brand);background:var(--soft);color:var(--ink)}
+input,select,textarea{font:16px Inter,system-ui,sans-serif;width:100%;min-height:46px;border:2px solid var(--line);border-radius:12px;padding:9px 12px;background:var(--card);color:var(--ink)}
+textarea{min-height:120px;resize:vertical}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+label{display:block;font-weight:700;font-size:14px;margin:12px 0 4px}
+label .opt{font-weight:500;color:var(--mute)}
+.err{color:var(--out);font-weight:700;font-size:14px;min-height:20px;margin-top:8px}
+.hint{font-size:13px;color:var(--mute);margin:6px 0 0}
+.empty{text-align:center;padding:30px 12px;color:var(--mute)}
+.empty h2{color:var(--ink);margin-bottom:8px}
+.empty p{margin:0 0 14px}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav div{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));max-width:600px;margin:0 auto}
+nav button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 0 9px;font-size:12px;font-weight:700;color:var(--mute);min-height:52px}
+nav svg{width:24px;height:24px;margin-bottom:2px}
+nav button[aria-current=page]{color:var(--brand)}
+.ov{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(10,20,18,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.ov[hidden]{display:none}
+.sheet{background:var(--card);width:100%;max-width:600px;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:20px 20px 0 0;padding:16px 16px 28px;box-shadow:0 -6px 24px rgba(0,0,0,.2)}
+.sh-h{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-column-gap:8px;align-items:start;margin-bottom:6px}
+.sh-h h2{font-size:21px;overflow-wrap:anywhere}
+.sh-h small{display:block;color:var(--mute);font-size:13px;margin-top:2px}
+.x{all:unset;cursor:pointer;font-weight:700;color:var(--mute);padding:0 4px 0 12px;min-height:44px;display:flex;align-items:center}
+.bigq{display:block;font:800 40px/1.05 Outfit,Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.bigq span{font-size:18px;color:var(--mute);margin-left:4px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-gap:8px;margin-top:12px}
+.facts div{background:var(--soft);border-radius:10px;padding:8px 10px}
+.facts dt,.facts .k{display:block;font-size:12px;color:var(--mute);font-weight:600}
+.facts dd,.facts .v{display:block;margin:0;font-weight:700;font-size:15px;overflow-wrap:anywhere}
+.hist{list-style:none;margin:10px 0 0;padding:0;border-top:1px solid var(--line)}
+.hist li{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-column-gap:10px;padding:9px 0;border-bottom:1px solid var(--line);align-items:start}
+.hist .w{font-weight:600;font-size:15px;overflow-wrap:anywhere}.hist .d{font-size:12.5px;color:var(--mute);overflow-wrap:anywhere}
+.hist .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.hist .r small{display:block;color:var(--mute);font-size:12px}
+.pos{color:var(--ok);font-weight:800}.neg{color:var(--out);font-weight:800}.adj{color:var(--exp);font-weight:800}
+.typeseg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-gap:6px;margin-top:8px}
+.typeseg button{all:unset;box-sizing:border-box;cursor:pointer;text-align:center;border:2px solid var(--line);border-radius:12px;min-height:44px;padding:6px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1.2}
+.typeseg button[aria-pressed=true]{border-color:var(--brand);background:var(--soft)}
+.preview{margin-top:10px;background:var(--soft);border-radius:10px;padding:10px 12px;font-size:14px;font-weight:600;min-height:44px;overflow-wrap:anywhere}
+.rep{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-gap:10px}
+.rep div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.rep .k{display:block;font-size:12.5px;color:var(--mute);font-weight:600}
+.rep .v{display:block;font:800 21px/1.15 Outfit,Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rlist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.rlist li{padding:10px 14px;border-bottom:1px solid var(--line)}
+.rlist li:last-child{border-bottom:0}
+.rlist .t{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-column-gap:10px;align-items:start}
+.rlist .t b{overflow-wrap:anywhere;font-size:15px}
+.rlist .nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-gap:6px;margin-top:6px}
+.rlist .nums span{font-size:12.5px;color:var(--mute);line-height:1.3}
+.rlist .nums b{display:block;color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.bars{display:grid;grid-gap:8px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr);grid-gap:3px}
+.bar .lab{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-column-gap:8px;font-size:14px}
+.bar .lab span:first-child{overflow-wrap:anywhere}.bar .lab span:last-child{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bar i{display:block;height:10px;border-radius:5px;background:var(--brand);min-width:2px}
+.bar i.coffee{background:var(--coffee)}
+.share{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-gap:8px;margin-top:12px}
+.toast{position:fixed;left:16px;right:16px;bottom:76px;margin:0 auto;max-width:420px;background:#14211f;color:#fff;padding:11px 14px;border-radius:12px;font-weight:600;font-size:14px;z-index:60;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.toast[hidden]{display:none}
+.note{font-size:13px;color:var(--mute);margin:8px 0 0}
+.mt{margin-top:12px}
+.sample{display:inline-block;font-size:12px;font-weight:700;color:var(--low);background:var(--lowbg);border-radius:6px;padding:2px 8px;margin-top:8px}
+@media (max-width:359px){.stats{grid-gap:8px}.stat .n{font-size:26px}.bigq{font-size:34px}.seg button{font-size:13px}.rep{grid-template-columns:minmax(0,1fr)}.value{grid-template-columns:minmax(0,1fr)}.split{text-align:left;margin-top:6px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="hd">
+      <div><small>Inventory</small><h1 id="biz">Town Mart &amp; Coffee Shop Tagpuan</h1></div>
+      <div class="today" id="today"></div>
+    </div>
+    <div class="seg" id="seg" role="group" aria-label="Section">
+      <button data-a="section" data-s="all">All</button>
+      <button data-a="section" data-s="mart">Mini-mart</button>
+      <button data-a="section" data-s="coffee">Coffee shop</button>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+<nav aria-label="Main"><div>
+  <button data-a="tab" data-t="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 12 4l9 7v9h-6v-6H9v6H3z"/></svg>Home</button>
+  <button data-a="tab" data-t="items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg>Items</button>
+  <button data-a="tab" data-t="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg>Reports</button>
+  <button data-a="tab" data-t="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Settings</button>
+</div></nav>
+<div class="ov" id="ov" hidden><div class="sheet" role="dialog" aria-modal="true" id="sheet"></div></div>
+<div class="toast" id="toast" hidden></div>
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var esc=function(s){return String(s===undefined||s===null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var nz=function(a,b){return (a===null||a===undefined||a==='')?b:a};
+var r2=function(n){return Math.round((+n||0)*100)/100};
+var num=function(v){var n=parseFloat(String(v===undefined||v===null?'':v).replace(/[₱,\s]/g,''));return isFinite(n)?n:NaN};
+var peso=function(n){var r=r2(n);return '₱'+r.toLocaleString('en-PH',{minimumFractionDigits:r%1?2:0,maximumFractionDigits:2})};
+var fq=function(n){return r2(n).toLocaleString('en-PH',{maximumFractionDigits:2})};
+var uid=function(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)};
+var pad=function(n){return (n<10?'0':'')+n};
+var dkey=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var hm=function(d){var h=d.getHours(),ap=h<12?'AM':'PM';h=h%12||12;return h+':'+pad(d.getMinutes())+' '+ap};
+function when(t){var d=new Date(t),k=dkey(d),now=new Date();if(k===dkey(now))return 'Today, '+hm(d);if(k===dkey(new Date(now.getTime()-864e5)))return 'Yesterday, '+hm(d);return MON[d.getMonth()]+' '+d.getDate()+(d.getFullYear()!==now.getFullYear()?', '+d.getFullYear():'')+', '+hm(d)}
+function dateLabel(s){if(!s)return '';var p=s.split('-');return MON[(+p[1])-1]+' '+(+p[2])+', '+p[0]}
+function daysUntil(s){if(!s)return null;var p=s.split('-');var d=new Date(+p[0],(+p[1])-1,+p[2]);var t=new Date();t=new Date(t.getFullYear(),t.getMonth(),t.getDate());return Math.round((d-t)/864e5)}
+
+var SEC={mart:'Mini-mart',coffee:'Coffee shop'};
+var CATS={mart:['Beverages','Snacks','Canned goods','Instant noodles','Condiments','Dairy','Bread','Toiletries','Household','Rice and grains','Others'],
+coffee:['Coffee beans','Milk and dairy','Syrups and sauces','Powders','Sweeteners','Cups and lids','Pastries','Cleaning supplies','Others']};
+var UNITS=['pcs','pack','box','bottle','can','sachet','kg','g','L','mL'];
+var REASONS={in:['Delivery or purchase','Returned by customer','Transfer in','Other'],
+out:['Sold','Used in coffee shop','Spoiled or expired','Damaged','Transfer out','Other'],count:['Physical count']};
+var LOSS=['Spoiled or expired','Damaged'];
+var TYPE={in:'Stock in',out:'Stock out',count:'Count'};
+
+/* ---------- storage ---------- */
+var KEY='townmart:v1';
+function blank(){return {v:1,settings:{business:'Town Mart & Coffee Shop Tagpuan',staff:''},items:[],moves:[]}}
+function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&s.items&&s.moves)return s}catch(e){}return blank()}
+var db=load();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(db));return true}catch(e){toast('Could not save. The phone storage may be full.');return false}}
+var items=function(){return db.items.filter(function(i){return !i.archived})};
+var byId=function(id){for(var i=0;i<db.items.length;i++)if(db.items[i].id===id)return db.items[i];return null};
+function status(i){if(i.qty<=0)return 'out';if(i.qty<=i.reorder)return 'low';return 'ok'}
+function expiring(i){var d=daysUntil(i.expiry);return d!==null&&d<=7}
+function tagsHtml(i,withSec){var s=status(i),h='';
+  if(withSec)h+='<span class="tag '+i.section+'">'+SEC[i.section]+'</span>';
+  h+=s==='out'?'<span class="tag out">Out of stock</span>':s==='low'?'<span class="tag low">Low stock</span>':'<span class="tag ok">In stock</span>';
+  if(expiring(i)){var d=daysUntil(i.expiry);h+='<span class="tag exp">'+(d<0?'Expired':d===0?'Expires today':'Expires in '+d+(d===1?' day':' days'))+'</span>'}
+  return '<span class="tags">'+h+'</span>'}
+
+/* ---------- UI state ---------- */
+var TABS=['home','items','reports','settings'];
+var st={tab:TABS.indexOf(location.hash.slice(1))>=0?location.hash.slice(1):'home',section:'all',q:'',filter:'all',cat:'',period:'7',rview:'levels',sheet:null,mtype:'in'};
+var inSec=function(i){return st.section==='all'||i.section===st.section};
+var ov=$('#ov'),sh=$('#sheet');
+function sheet(fn,live){st.sheet={fn:fn,live:!!live};sh.innerHTML=fn();ov.hidden=false;sh.scrollTop=0;fitAll(sh);var f=sh.querySelector('[autofocus]');if(f)try{f.focus()}catch(e){}}
+function closeSheet(){st.sheet=null;ov.hidden=true;sh.innerHTML=''}
+var tt;function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},2800)}
+function head(t,sub){return '<div class="sh-h"><div><h2>'+t+'</h2>'+(sub?'<small>'+sub+'</small>':'')+'</div><button class="x" data-a="close" aria-label="Close">Close</button></div>'}
+function copyText(text){try{if(window.Android&&window.Android.copy){window.Android.copy(text);toast('Copied');return}}catch(e){}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){toast('Copied')},function(){fallbackCopy(text)})}else fallbackCopy(text)}
+function fallbackCopy(text){var ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.top='-200px';document.body.appendChild(ta);ta.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}document.body.removeChild(ta);toast(ok?'Copied':'Could not copy on this device')}
+function shareText(text,subject){try{if(window.Android&&window.Android.share){window.Android.share(text,subject);return}}catch(e){}
+  if(navigator.share){navigator.share({title:subject,text:text}).catch(function(){})}else copyText(text)}
+
+/* ---------- Home ---------- */
+function vHome(){var its=items().filter(inSec);
+  if(!db.items.length)return '<div class="empty"><h2>No items yet</h2><p>Add the products of the mini-mart and the supplies of the coffee shop to start monitoring stock.</p><div class="g2"><button class="btn pri" data-a="newItem">Add an item</button><button class="btn ghost" data-a="sampleAsk">Load sample data</button></div></div>';
+  var low=its.filter(function(i){return status(i)==='low'}),out=its.filter(function(i){return status(i)==='out'}),exp=its.filter(expiring);
+  var val=function(s){return items().filter(function(i){return i.section===s}).reduce(function(a,i){return a+Math.max(i.qty,0)*(+i.cost||0)},0)};
+  var tot=its.reduce(function(a,i){return a+Math.max(i.qty,0)*(+i.cost||0)},0);
+  var need=out.concat(low).slice(0,8);
+  var moves=db.moves.filter(function(m){var i=byId(m.item);return i&&inSec(i)}).slice(-6).reverse();
+  return '<div class="stats">'+
+    '<button class="stat" data-a="goFilter" data-f="all"><span class="n fit">'+its.length+'</span><span class="l">Items monitored</span></button>'+
+    '<button class="stat low" data-a="goFilter" data-f="low"><span class="n fit">'+low.length+'</span><span class="l">Low stock</span></button>'+
+    '<button class="stat out" data-a="goFilter" data-f="out"><span class="n fit">'+out.length+'</span><span class="l">Out of stock</span></button>'+
+    '<button class="stat exp" data-a="goFilter" data-f="exp"><span class="n fit">'+exp.length+'</span><span class="l">Expiring in 7 days</span></button></div>'+
+  '<div class="card mt"><div class="value"><div><small>Stock value at cost</small><span class="big fit">'+peso(tot)+'</span></div>'+
+    (st.section==='all'?'<div class="split">Mini-mart '+peso(val('mart'))+'<br>Coffee shop '+peso(val('coffee'))+'</div>':'')+'</div></div>'+
+  '<div class="g2 mt"><button class="btn in" data-a="quickMove" data-m="in">+ Stock in</button><button class="btn outb" data-a="quickMove" data-m="out">− Stock out</button></div>'+
+  '<h3>Needs restocking</h3>'+(need.length?'<ul class="rows">'+need.map(rowHtml).join('')+'</ul>':'<p class="lead">All items are above their reorder level.</p>')+
+  '<h3>Recent activity</h3>'+(moves.length?'<ul class="hist">'+moves.map(function(m){return moveLi(m,true)}).join('')+'</ul>':'<p class="lead">No stock movements yet.</p>')}
+function rowHtml(i){return '<li><button class="row" data-a="openItem" data-id="'+i.id+'"><span><span class="nm">'+esc(i.name)+'</span><span class="sub">'+esc(i.category||'Uncategorized')+(st.section==='all'?' · '+SEC[i.section]:'')+'</span>'+tagsHtml(i,false)+'</span><span class="qty"><b>'+fq(i.qty)+'</b><span>'+esc(i.unit)+'</span></span></button></li>'}
+function moveLi(m,withName){var i=byId(m.item),u=i?i.unit:'';var cls=m.type==='in'?'pos':m.type==='out'?'neg':'adj';var sign=m.delta>0?'+':m.delta<0?'−':'±';
+  return '<li><div>'+(withName?'<div class="w">'+esc(i?i.name:'Deleted item')+'</div>':'<div class="w">'+TYPE[m.type]+' · '+esc(m.reason)+'</div>')+
+  '<div class="d">'+(withName?TYPE[m.type]+' · '+esc(m.reason)+' · ':'')+when(m.t)+(m.by?' · '+esc(m.by):'')+(m.note?' · '+esc(m.note):'')+'</div></div>'+
+  '<div class="r"><span class="'+cls+'">'+sign+fq(Math.abs(m.delta))+' '+esc(u)+'</span><small>now '+fq(m.after)+'</small></div></li>'}
+
+/* ---------- Items ---------- */
+function filtered(){var q=st.q.trim().toLowerCase();return items().filter(inSec).filter(function(i){
+  if(st.filter==='low'&&status(i)!=='low')return false;if(st.filter==='out'&&status(i)!=='out')return false;if(st.filter==='exp'&&!expiring(i))return false;
+  if(st.cat&&i.category!==st.cat)return false;
+  return !q||(i.name+' '+(i.category||'')+' '+(i.sku||'')+' '+(i.supplier||'')).toLowerCase().indexOf(q)>=0}).sort(function(a,b){return a.name.localeCompare(b.name)})}
+function listHtml(){var f=filtered();if(!f.length)return '<p class="empty">'+(items().length?'No items match.':'No items yet.')+'</p>';return '<p class="lead">'+f.length+(f.length===1?' item':' items')+'</p><ul class="rows">'+f.map(rowHtml).join('')+'</ul>'}
+function vItems(){var cats={};items().filter(inSec).forEach(function(i){if(i.category)cats[i.category]=1});var cl=Object.keys(cats).sort();if(st.cat&&!cats[st.cat])st.cat='';
+  var F=[['all','All'],['low','Low stock'],['out','Out of stock'],['exp','Expiring']];
+  return '<div class="tools"><input id="q" type="search" placeholder="Search name, category, supplier" value="'+esc(st.q)+'" aria-label="Search items"><button class="btn pri" data-a="newItem">+ Add</button></div>'+
+  '<div class="chips">'+F.map(function(x){return '<button class="chip" data-a="filter" data-f="'+x[0]+'" aria-pressed="'+(st.filter===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+
+  (cl.length?'<select id="cat" aria-label="Category"><option value="">All categories</option>'+cl.map(function(c){return '<option'+(c===st.cat?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select><div style="height:10px"></div>':'')+
+  '<div id="list">'+listHtml()+'</div>'}
+
+function itemHtml(id){var i=byId(id);if(!i||i.archived)return head('Item not found');
+  var hist=db.moves.filter(function(m){return m.item===id}).slice().reverse();
+  var facts=[['Section',SEC[i.section]],['Category',i.category||'—'],['Reorder at',fq(i.reorder)+' '+i.unit],['Cost per unit',i.cost?peso(i.cost):'—'],['Selling price',i.price?peso(i.price):'—'],['Stock value',peso(Math.max(i.qty,0)*(+i.cost||0))],['Supplier',i.supplier||'—'],['Expiry',i.expiry?dateLabel(i.expiry):'—']];
+  if(i.sku)facts.push(['SKU or barcode',i.sku]);
+  return head(esc(i.name),esc(i.category||'Uncategorized')+' · '+SEC[i.section])+
+  '<div class="bigq fit">'+fq(i.qty)+'<span>'+esc(i.unit)+'</span></div>'+tagsHtml(i,false)+
+  '<div class="g3 mt"><button class="btn in" data-a="move" data-id="'+id+'" data-m="in">+ In</button><button class="btn outb" data-a="move" data-id="'+id+'" data-m="out">− Out</button><button class="btn ghost" data-a="move" data-id="'+id+'" data-m="count">Count</button></div>'+
+  '<div class="facts">'+facts.map(function(f){return '<div><span class="k">'+f[0]+'</span><span class="v">'+esc(f[1])+'</span></div>'}).join('')+'</div>'+
+  '<h3>Stock card</h3>'+(hist.length?'<ul class="hist">'+hist.map(function(m){return moveLi(m,false)}).join('')+'</ul>':'<p class="lead">No movements yet.</p>')+
+  '<div class="g2 mt"><button class="btn ghost sm" data-a="editItem" data-id="'+id+'">Edit item</button><button class="btn danger sm" data-a="delItem" data-id="'+id+'">Delete item</button></div>'}
+
+function itemForm(id){var i=id?byId(id):{section:st.section==='all'?'mart':st.section,unit:'pcs',reorder:5,qty:0};
+  var sec=i.section;
+  return head(id?'Edit item':'Add item')+'<form data-f="item" data-id="'+(id||'')+'" novalidate>'+
+  '<label for="fn">Item name</label><input id="fn" name="name" required '+(id?'':'autofocus ')+'value="'+esc(i.name)+'" placeholder="e.g. Coca-Cola 1.5L">'+
+  '<label>Section</label><div class="typeseg" style="grid-template-columns:repeat(2,minmax(0,1fr))" id="secPick"><button type="button" data-a="pickSec" data-s="mart" aria-pressed="'+(sec==='mart')+'">Mini-mart</button><button type="button" data-a="pickSec" data-s="coffee" aria-pressed="'+(sec==='coffee')+'">Coffee shop</button></div><input type="hidden" name="section" id="fsec" value="'+sec+'">'+
+  '<label for="fc">Category</label><input id="fc" name="category" list="catlist" value="'+esc(i.category)+'" placeholder="Pick or type a category"><datalist id="catlist">'+catOptions(sec)+'</datalist>'+
+  '<div class="g2"><div><label for="fu">Unit</label><select id="fu" name="unit">'+UNITS.map(function(u){return '<option'+(u===i.unit?' selected':'')+'>'+u+'</option>'}).join('')+'</select></div>'+
+  '<div><label for="fr">Reorder level</label><input id="fr" name="reorder" inputmode="decimal" value="'+esc(nz(i.reorder,''))+'"></div></div>'+
+  (id?'':'<label for="fq">Starting stock</label><input id="fq" name="qty" inputmode="decimal" value="0">')+
+  '<div class="g2"><div><label for="fco">Cost per unit <span class="opt">(₱)</span></label><input id="fco" name="cost" inputmode="decimal" value="'+esc(nz(i.cost,''))+'" placeholder="optional"></div>'+
+  '<div><label for="fp">Selling price <span class="opt">(₱)</span></label><input id="fp" name="price" inputmode="decimal" value="'+esc(nz(i.price,''))+'" placeholder="optional"></div></div>'+
+  '<label for="fsu">Supplier <span class="opt">(optional)</span></label><input id="fsu" name="supplier" value="'+esc(i.supplier)+'">'+
+  '<div class="g2"><div><label for="fe">Expiry date <span class="opt">(optional)</span></label><input id="fe" name="expiry" type="date" value="'+esc(i.expiry)+'"></div>'+
+  '<div><label for="fsk">SKU or barcode <span class="opt">(optional)</span></label><input id="fsk" name="sku" value="'+esc(i.sku)+'"></div></div>'+
+  '<div class="err"></div><button class="btn pri wide">'+(id?'Save changes':'Add item')+'</button></form>'}
+function catOptions(sec){var set={};CATS[sec].forEach(function(c){set[c]=1});items().forEach(function(i){if(i.section===sec&&i.category)set[i.category]=1});return Object.keys(set).map(function(c){return '<option value="'+esc(c)+'">'}).join('')}
+
+function moveHtml(id,type){var i=byId(id);st.mtype=type;
+  return head(esc(i.name),'Now '+fq(i.qty)+' '+esc(i.unit))+'<form data-f="move" data-id="'+id+'" novalidate>'+
+  '<div class="typeseg">'+['in','out','count'].map(function(t){return '<button type="button" data-a="mtype" data-m="'+t+'" aria-pressed="'+(t===type)+'">'+TYPE[t]+'</button>'}).join('')+'</div>'+
+  '<div id="mfields">'+moveFields(i,type)+'</div>'+
+  '<label for="mby">Recorded by <span class="opt">(optional)</span></label><input id="mby" name="by" value="'+esc(db.settings.staff)+'" placeholder="Staff name">'+
+  '<label for="mn">Note <span class="opt">(optional)</span></label><input id="mn" name="note" placeholder="e.g. DR no. 1043">'+
+  '<div class="err"></div><button class="btn pri wide">Save</button></form>'}
+function moveFields(i,type){var R=REASONS[type];
+  return '<label for="mq">'+(type==='count'?'Actual count on shelf':'Quantity')+' <span class="opt">('+esc(i.unit)+')</span></label><input id="mq" name="qty" inputmode="decimal" autofocus placeholder="0">'+
+  (type==='count'?'':'<label for="mr">Reason</label><select id="mr" name="reason">'+R.map(function(r){return '<option>'+r+'</option>'}).join('')+'</select>')+
+  (type==='in'?'<label for="mc">Cost per unit <span class="opt">(₱, optional)</span></label><input id="mc" name="ucost" inputmode="decimal" value="'+esc(nz(i.cost,''))+'">':'')+
+  '<div class="preview" id="mprev">'+previewText(i,type,'')+'</div>'}
+function previewText(i,type,v){var q=num(v);if(!(q>=0)||v==='')return type==='count'?'Enter the number you counted.':'Enter the quantity.';
+  var after=type==='in'?i.qty+q:type==='out'?i.qty-q:q;var d=r2(after-i.qty);
+  if(type==='out'&&q>i.qty)return 'Only '+fq(i.qty)+' '+esc(i.unit)+' in stock.';
+  return 'Stock will be '+fq(after)+' '+esc(i.unit)+(type==='count'?' ('+(d>0?'+':d<0?'−':'±')+fq(Math.abs(d))+' difference)':'')}
+function pickHtml(type){var its=items().filter(inSec).sort(function(a,b){return a.name.localeCompare(b.name)});
+  return head(TYPE[type],'Choose an item')+'<input id="pq" type="search" placeholder="Search items" aria-label="Search items"><div style="height:10px"></div><ul class="rows" id="plist">'+pickRows(its,type)+'</ul>'}
+function pickRows(its,type){if(!its.length)return '<li class="empty">No items found.</li>';return its.map(function(i){return '<li><button class="row" data-a="move" data-id="'+i.id+'" data-m="'+type+'"><span><span class="nm">'+esc(i.name)+'</span><span class="sub">'+esc(i.category||'Uncategorized')+' · '+SEC[i.section]+'</span></span><span class="qty"><b>'+fq(i.qty)+'</b><span>'+esc(i.unit)+'</span></span></button></li>'}).join('')}
+
+/* ---------- Reports ---------- */
+var PERIODS=[['today','Today'],['7','Last 7 days'],['30','Last 30 days'],['month','This month'],['all','All time']];
+function periodStart(){var n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate()).getTime();
+  if(st.period==='today')return t;if(st.period==='7')return t-6*864e5;if(st.period==='30')return t-29*864e5;if(st.period==='month')return new Date(n.getFullYear(),n.getMonth(),1).getTime();return 0}
+function periodName(){for(var i=0;i<PERIODS.length;i++)if(PERIODS[i][0]===st.period)return PERIODS[i][1];return ''}
+function reportData(){var s=periodStart();var mv=db.moves.filter(function(m){var i=byId(m.item);return m.t>=s&&i&&(st.section==='all'||i.section===st.section)});
+  var per={};mv.forEach(function(m){var p=per[m.item]||(per[m.item]={inq:0,outq:0,adj:0,inv:0,outv:0});var c=+m.cost||0;
+    if(m.type==='in'){p.inq+=m.delta;p.inv+=m.delta*c}else if(m.type==='out'){p.outq-=m.delta;p.outv+=(-m.delta)*c}else p.adj+=m.delta});
+  var inv=0,outv=0,loss=0,reasons={};mv.forEach(function(m){var c=+m.cost||0;if(m.type==='in')inv+=m.delta*c;if(m.type==='out'){outv+=-m.delta*c;reasons[m.reason]=(reasons[m.reason]||0)+(-m.delta*c);if(LOSS.indexOf(m.reason)>=0)loss+=-m.delta*c}});
+  return {mv:mv,per:per,inv:inv,outv:outv,loss:loss,reasons:reasons}}
+function vReports(){if(!db.items.length)return '<div class="empty"><h2>No data yet</h2><p>Reports appear once items and stock movements are recorded.</p></div>';
+  var R=reportData(),its=items().filter(inSec).sort(function(a,b){return a.name.localeCompare(b.name)});
+  var V=[['levels','Stock levels'],['moves','Movements'],['low','Low stock'],['value','Value']];
+  var body='';
+  if(st.rview==='levels')body=its.length?'<ul class="rlist">'+its.map(function(i){return '<li><div class="t"><b>'+esc(i.name)+'</b>'+tagsHtml(i,false)+'</div><div class="nums"><span>On hand<b>'+fq(i.qty)+' '+esc(i.unit)+'</b></span><span>Reorder at<b>'+fq(i.reorder)+'</b></span><span>Value<b>'+peso(Math.max(i.qty,0)*(+i.cost||0))+'</b></span></div></li>'}).join('')+'</ul>':'<p class="lead">No items in this section.</p>';
+  if(st.rview==='moves'){var ids=Object.keys(R.per);body=ids.length?'<ul class="rlist">'+ids.map(function(id){var i=byId(id),p=R.per[id];return '<li><div class="t"><b>'+esc(i.name)+'</b><span class="qty"><b>'+fq(i.qty)+'</b><span>'+esc(i.unit)+'</span></span></div><div class="nums"><span>In<b class="pos">+'+fq(p.inq)+'</b></span><span>Out<b class="neg">−'+fq(p.outq)+'</b></span><span>Count adj.<b class="adj">'+(p.adj>0?'+':p.adj<0?'−':'±')+fq(Math.abs(p.adj))+'</b></span></div></li>'}).join('')+'</ul>':'<p class="lead">No stock movements in this period.</p>'}
+  if(st.rview==='low'){var L=its.filter(function(i){return status(i)!=='ok'||expiring(i)});body=L.length?'<ul class="rlist">'+L.map(function(i){return '<li><div class="t"><b>'+esc(i.name)+'</b>'+tagsHtml(i,false)+'</div><div class="nums"><span>On hand<b>'+fq(i.qty)+' '+esc(i.unit)+'</b></span><span>Reorder at<b>'+fq(i.reorder)+'</b></span><span>Supplier<b>'+esc(i.supplier||'—')+'</b></span></div></li>'}).join('')+'</ul>':'<p class="lead">Nothing is low, out of stock or expiring.</p>'}
+  if(st.rview==='value'){var cat={};its.forEach(function(i){var k=i.category||'Uncategorized';cat[k]=cat[k]||{v:0,s:i.section};cat[k].v+=Math.max(i.qty,0)*(+i.cost||0)});var ks=Object.keys(cat).sort(function(a,b){return cat[b].v-cat[a].v});var mx=Math.max.apply(null,[1].concat(ks.map(function(k){return cat[k].v})));
+    var rs=Object.keys(R.reasons).sort(function(a,b){return R.reasons[b]-R.reasons[a]});var mr=Math.max.apply(null,[1].concat(rs.map(function(k){return R.reasons[k]})));
+    body='<h3 style="margin-top:4px">Stock value by category</h3><div class="bars card">'+(ks.length?ks.map(function(k){return '<div class="bar"><div class="lab"><span>'+esc(k)+'</span><span>'+peso(cat[k].v)+'</span></div><i class="'+cat[k].s+'" style="width:'+(cat[k].v/mx*100).toFixed(1)+'%"></i></div>'}).join(''):'<p class="lead">No items.</p>')+'</div>'+
+    '<h3>Stock out by reason ('+periodName().toLowerCase()+')</h3><div class="bars card">'+(rs.length?rs.map(function(k){return '<div class="bar"><div class="lab"><span>'+esc(k)+'</span><span>'+peso(R.reasons[k])+'</span></div><i style="width:'+(R.reasons[k]/mr*100).toFixed(1)+'%"></i></div>'}).join(''):'<p class="lead">No stock out in this period.</p>')+'</div><p class="note">Values use the cost per unit recorded with each movement.</p>'}
+  return '<div class="chips">'+PERIODS.map(function(p){return '<button class="chip" data-a="period" data-p="'+p[0]+'" aria-pressed="'+(st.period===p[0])+'">'+p[1]+'</button>'}).join('')+'</div>'+
+  '<div class="rep"><div><span class="k">Stock in ('+periodName().toLowerCase()+')</span><span class="v fit">'+peso(R.inv)+'</span></div><div><span class="k">Stock out at cost</span><span class="v fit">'+peso(R.outv)+'</span></div>'+
+  '<div><span class="k">Losses (spoiled, damaged)</span><span class="v fit" style="color:var(--out)">'+peso(R.loss)+'</span></div><div><span class="k">Movements recorded</span><span class="v fit">'+R.mv.length+'</span></div></div>'+
+  '<div class="chips mt">'+V.map(function(x){return '<button class="chip" data-a="rview" data-v="'+x[0]+'" aria-pressed="'+(st.rview===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+body+
+  '<div class="share"><button class="btn pri" data-a="shareCsv">Share as CSV</button><button class="btn ghost" data-a="copyCsv">Copy CSV</button></div><p class="note">The CSV opens in Excel or Google Sheets.</p>'}
+function csvCell(v){v=String(v===undefined||v===null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function csv(){var its=items().filter(inSec).sort(function(a,b){return a.name.localeCompare(b.name)}),rows,R=reportData();
+  if(st.rview==='moves'){rows=[['Date','Time','Item','Section','Type','Reason','Quantity','Unit','Stock after','Cost per unit','Recorded by','Note']];
+    R.mv.forEach(function(m){var i=byId(m.item),d=new Date(m.t);rows.push([dkey(d),hm(d),i.name,SEC[i.section],TYPE[m.type],m.reason,r2(m.delta),i.unit,r2(m.after),nz(m.cost,''),m.by||'',m.note||''])})}
+  else{var L=st.rview==='low'?its.filter(function(i){return status(i)!=='ok'||expiring(i)}):its;
+    rows=[['Item','Section','Category','On hand','Unit','Reorder level','Status','Cost per unit','Stock value','Supplier','Expiry','SKU']];
+    L.forEach(function(i){var s=status(i);rows.push([i.name,SEC[i.section],i.category||'',r2(i.qty),i.unit,r2(i.reorder),s==='out'?'Out of stock':s==='low'?'Low stock':'In stock',nz(i.cost,''),r2(Math.max(i.qty,0)*(+i.cost||0)),i.supplier||'',i.expiry||'',i.sku||''])})}
+  return rows.map(function(r){return r.map(csvCell).join(',')}).join('\n')}
+function csvName(){return db.settings.business+' - '+({levels:'Stock levels',moves:'Stock movements',low:'Low stock',value:'Stock levels'})[st.rview]+' - '+dkey(new Date())}
+
+/* ---------- Settings ---------- */
+function vSettings(){var n=items().length,m=db.moves.length;
+  return '<form data-f="settings" novalidate><div class="card"><label for="sb" style="margin-top:0">Business name</label><input id="sb" name="business" value="'+esc(db.settings.business)+'">'+
+  '<label for="ss">Default staff name <span class="opt">(for "Recorded by")</span></label><input id="ss" name="staff" value="'+esc(db.settings.staff)+'">'+
+  '<div class="err"></div><button class="btn pri wide">Save settings</button></div></form>'+
+  '<h3>Backup and restore</h3><div class="card"><p class="lead" style="margin:0">'+n+(n===1?' item':' items')+' and '+m+(m===1?' movement':' movements')+' are saved on this phone only. Uninstalling the app deletes them, so share a backup regularly.</p>'+
+  '<div class="g2 mt"><button class="btn pri" data-a="shareBackup">Share backup</button><button class="btn ghost" data-a="copyBackup">Copy backup</button></div>'+
+  '<button class="btn ghost wide mt" data-a="restore">Restore from backup</button></div>'+
+  '<h3>Demo data</h3><div class="card"><p class="lead" style="margin:0">Load sample items and movements to try the app or to demonstrate it. This replaces the current data.</p><button class="btn ghost wide mt" data-a="sampleAsk">Load sample data</button>'+
+  '<button class="btn danger wide mt" data-a="clearAsk">Delete all data</button></div>'+
+  '<p class="note">Town Mart Inventory 1.0 · Works offline · Records are stored on this device.</p>'}
+
+/* ---------- sample data ---------- */
+function sample(){var now=Date.now(),D=864e5,t=new Date(),ex=function(d){return dkey(new Date(t.getTime()+d*D))};
+  var I=[['Coca-Cola 1.5L','mart','Beverages','bottle',24,6,68,80,'Coca-Cola Beverages PH',''],['Bottled water 500mL','mart','Beverages','bottle',4,12,9,15,'Local distributor',''],
+  ['Pancit Canton','mart','Instant noodles','pack',36,12,13.5,17,'Davao grocery wholesaler',''],['Corned beef 150g','mart','Canned goods','can',0,6,32,40,'Davao grocery wholesaler',''],
+  ['Sliced bread','mart','Bread','pack',5,4,52,62,'Santa Cruz bakery',ex(2)],['Bath soap','mart','Toiletries','pcs',18,6,24,32,'Davao grocery wholesaler',''],
+  ['Arabica coffee beans','coffee','Coffee beans','kg',2.5,1,950,0,'Mt. Apo coffee farm',ex(60)],['Fresh milk','coffee','Milk and dairy','L',6,4,98,0,'Dairy supplier',ex(4)],
+  ['Caramel syrup','coffee','Syrups and sauces','bottle',1,2,420,0,'Café supply store',''],['12 oz paper cups','coffee','Cups and lids','pcs',140,100,3.2,0,'Café supply store',''],
+  ['Cup lids','coffee','Cups and lids','pcs',60,100,1.5,0,'Café supply store',''],['Chocolate powder','coffee','Powders','kg',0.8,0.5,380,0,'Café supply store',ex(90)]];
+  var d=blank();d.settings.business=db.settings.business||d.settings.business;d.settings.staff='Angel';
+  I.forEach(function(r,k){var it={id:'s'+k+uid(),name:r[0],section:r[1],category:r[2],unit:r[3],qty:0,reorder:r[5],cost:r[6],price:r[7]||'',supplier:r[8],expiry:r[9],sku:'',sample:true,created:now-14*D};d.items.push(it);
+    var start=r[4]+ (k%3===0?10:k%3===1?6:3);
+    d.moves.push({id:uid(),t:now-13*D+k*3600e3,item:it.id,type:'in',delta:start,after:start,reason:'Delivery or purchase',note:'Opening stock',by:'Angel',cost:r[6]});it.qty=start;
+    var out=r2(start-r[4]);if(out>0){var reason=r[1]==='coffee'?'Used in coffee shop':'Sold';if(k===4)reason='Spoiled or expired';
+      d.moves.push({id:uid(),t:now-(k%5+1)*D,item:it.id,type:'out',delta:-out,after:r[4],reason:reason,note:'',by:'Angel',cost:r[6]});it.qty=r[4]}});
+  return d}
+
+/* ---------- render ---------- */
+function render(){
+  $('#biz').textContent=db.settings.business||'Town Mart & Coffee Shop Tagpuan';
+  var n=new Date();$('#today').textContent=MON[n.getMonth()]+' '+n.getDate();
+  Array.prototype.forEach.call(document.querySelectorAll('#seg button'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-s')===st.section))});
+  $('#seg').style.display=st.tab==='settings'?'none':'';
+  Array.prototype.forEach.call(document.querySelectorAll('nav button'),function(b){if(b.getAttribute('data-t')===st.tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+  var q=$('#q'),had=q&&document.activeElement===q;
+  $('#main').innerHTML=({home:vHome,items:vItems,reports:vReports,settings:vSettings})[st.tab]();
+  if(had&&$('#q')){var e=$('#q');e.focus();try{e.setSelectionRange(e.value.length,e.value.length)}catch(x){}}
+  if(st.sheet&&st.sheet.live){var y=sh.scrollTop;sh.innerHTML=st.sheet.fn();sh.scrollTop=y}
+  fitAll();
+}
+/* shrink big numbers to fit their box; wrap only if still too wide */
+function fitAll(root){Array.prototype.forEach.call((root||document).querySelectorAll('.fit'),function(el){el.classList.remove('wrap');el.style.fontSize='';var fs=parseFloat(getComputedStyle(el).fontSize),min=13;
+  while(el.scrollWidth>el.clientWidth+1&&fs>min){fs-=1;el.style.fontSize=fs+'px'}if(el.scrollWidth>el.clientWidth+1)el.classList.add('wrap')})}
+function commit(msg){if(save()){render();if(msg)toast(msg)}}
+
+/* ---------- actions ---------- */
+var openItem=function(id){sheet(function(){return itemHtml(id)},true)};
+var confirmHtml=function(t,msg,a,data,yes){var attrs=Object.keys(data).map(function(k){return 'data-'+k+'="'+esc(data[k])+'"'}).join(' ');
+  return head(t)+'<p>'+msg+'</p><div class="g2"><button class="btn ghost" data-a="'+(data.back||'close')+'" '+(data.id?'data-id="'+esc(data.id)+'"':'')+'>Cancel</button><button class="btn outb" data-a="'+a+'" '+attrs+'>'+(yes||'Delete')+'</button></div>'};
+var A={
+  tab:function(d){st.tab=d.t;try{history.replaceState(null,'','#'+d.t)}catch(e){}window.scrollTo(0,0);render()},
+  section:function(d){st.section=d.s;render()},
+  close:closeSheet,
+  goFilter:function(d){st.filter=d.f;st.cat='';st.q='';A.tab({t:'items'})},
+  filter:function(d){st.filter=d.f;render()},
+  period:function(d){st.period=d.p;render()},
+  rview:function(d){st.rview=d.v;render()},
+  newItem:function(){sheet(function(){return itemForm()})},
+  editItem:function(d){sheet(function(){return itemForm(d.id)})},
+  openItem:function(d){openItem(d.id)},
+  pickSec:function(d){$('#fsec').value=d.s;Array.prototype.forEach.call(document.querySelectorAll('#secPick button'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-s')===d.s))});$('#catlist').innerHTML=catOptions(d.s)},
+  move:function(d){sheet(function(){return moveHtml(d.id,d.m)})},
+  mtype:function(d){var form=sh.querySelector('form[data-f=move]'),i=byId(form.getAttribute('data-id'));st.mtype=d.m;
+    Array.prototype.forEach.call(sh.querySelectorAll('.typeseg button'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-m')===d.m))});
+    $('#mfields').innerHTML=moveFields(i,d.m);sh.querySelector('.err').textContent='';var q=$('#mq');if(q)try{q.focus()}catch(e){}},
+  quickMove:function(d){if(!items().filter(inSec).length){toast('Add an item first');return}sheet(function(){return pickHtml(d.m)})},
+  delItem:function(d){var i=byId(d.id);sheet(function(){return confirmHtml('Delete '+esc(i.name)+'?','The item is removed from the list. Its past movements stay in the reports.','doDelItem',{id:d.id,back:'openItem'})})},
+  doDelItem:function(d){var i=byId(d.id);i.archived=true;i.updated=Date.now();closeSheet();commit('Deleted '+i.name)},
+  shareCsv:function(){shareText(csv(),csvName())},
+  copyCsv:function(){copyText(csv())},
+  shareBackup:function(){shareText(JSON.stringify({app:'townmart-inventory',v:1,saved:new Date().toISOString(),data:db}),'Town Mart Inventory backup '+dkey(new Date()))},
+  copyBackup:function(){copyText(JSON.stringify({app:'townmart-inventory',v:1,saved:new Date().toISOString(),data:db}))},
+  restore:function(){sheet(function(){return head('Restore from backup')+'<form data-f="restore" novalidate><p class="lead">Paste a backup you shared or copied before. This replaces all data on this phone.</p><textarea name="json" aria-label="Backup text" autofocus></textarea><div class="err"></div><button class="btn pri wide">Restore</button></form>'})},
+  sampleAsk:function(){sheet(function(){return confirmHtml('Load sample data?','This replaces the items and movements on this phone with sample data for a demo.','doSample',{},'Load sample')})},
+  doSample:function(){db=sample();closeSheet();st.section='all';st.filter='all';commit('Sample data loaded')},
+  clearAsk:function(){sheet(function(){return confirmHtml('Delete all data?','Every item and stock movement on this phone will be deleted. Share a backup first if you may need it.','doClear',{},'Delete all')})},
+  doClear:function(){var b=db.settings.business;db=blank();db.settings.business=b;closeSheet();commit('All data deleted')}
+};
+var F={
+  item:function(f,form){var name=f.name.trim();if(!name)return 'Enter the item name.';var id=form.getAttribute('data-id');
+    var reorder=f.reorder===''?0:num(f.reorder);if(!(reorder>=0))return 'Reorder level must be 0 or more.';
+    var cost=f.cost===''?'':num(f.cost),price=f.price===''?'':num(f.price);if(cost!==''&&!(cost>=0))return 'Check the cost.';if(price!==''&&!(price>=0))return 'Check the selling price.';
+    var dup=items().filter(function(i){return i.id!==id&&i.section===f.section&&i.name.toLowerCase()===name.toLowerCase()});if(dup.length)return 'An item with this name already exists in '+SEC[f.section]+'.';
+    var rec={name:name,section:f.section==='coffee'?'coffee':'mart',category:f.category.trim(),unit:f.unit,reorder:r2(reorder),cost:cost===''?'':r2(cost),price:price===''?'':r2(price),supplier:f.supplier.trim(),expiry:f.expiry||'',sku:f.sku.trim(),updated:Date.now()};
+    if(id){var i=byId(id);Object.keys(rec).forEach(function(k){i[k]=rec[k]});delete i.sample;if(save()){render();openItem(id);toast('Saved')}return}
+    var q=f.qty===''?0:num(f.qty);if(!(q>=0))return 'Starting stock must be 0 or more.';
+    rec.id=uid();rec.qty=0;rec.created=Date.now();db.items.push(rec);
+    if(q>0){rec.qty=r2(q);db.moves.push({id:uid(),t:Date.now(),item:rec.id,type:'in',delta:r2(q),after:rec.qty,reason:'Delivery or purchase',note:'Starting stock',by:db.settings.staff||'',cost:rec.cost===''?'':rec.cost})}
+    if(save()){render();openItem(rec.id);toast('Added '+name)}},
+  move:function(f,form){var id=form.getAttribute('data-id'),i=byId(id),type=st.mtype;var q=num(f.qty);
+    if(f.qty===''||!(q>=0))return type==='count'?'Enter the number you counted.':'Enter a quantity.';
+    if(type!=='count'&&!(q>0))return 'Quantity must be more than 0.';
+    if(type==='out'&&q>i.qty+1e-9)return 'Only '+fq(i.qty)+' '+i.unit+' in stock. Use Count if the stock record is wrong.';
+    var delta=type==='in'?q:type==='out'?-q:r2(q-i.qty);if(type==='count'&&delta===0){closeSheet();openItem(id);toast('Count matches the record');return}
+    var cost=+i.cost||0;if(type==='in'&&f.ucost!==''){var uc=num(f.ucost);if(!(uc>=0))return 'Check the cost per unit.';cost=uc;i.cost=r2(uc)}
+    i.qty=r2(i.qty+delta);i.updated=Date.now();var by=f.by.trim();if(by)db.settings.staff=by;
+    db.moves.push({id:uid(),t:Date.now(),item:id,type:type,delta:r2(delta),after:i.qty,reason:type==='count'?'Physical count':f.reason,note:f.note.trim(),by:by,cost:cost?r2(cost):''});
+    if(save()){render();openItem(id);toast(TYPE[type]+' saved. Now '+fq(i.qty)+' '+i.unit)}},
+  settings:function(f){db.settings.business=f.business.trim()||'Town Mart & Coffee Shop Tagpuan';db.settings.staff=f.staff.trim();commit('Settings saved')},
+  restore:function(f){var o;try{o=JSON.parse(f.json)}catch(e){return 'This is not a valid backup. Paste the whole backup text.'}
+    if(!o||o.app!=='townmart-inventory'||!o.data||!o.data.items||!o.data.moves)return 'This is not a Town Mart Inventory backup.';
+    db=o.data;if(!db.settings)db.settings=blank().settings;closeSheet();commit('Restored '+items().length+' items')}
+};
+
+document.addEventListener('click',function(e){var el=e.target.closest?e.target.closest('[data-a]'):null;
+  if(el){e.preventDefault();var d={};Array.prototype.forEach.call(el.attributes,function(a){if(a.name.indexOf('data-')===0)d[a.name.slice(5)]=a.value});var fn=A[d.a];if(fn)fn(d,el);return}
+  if(e.target===ov)closeSheet()});
+document.addEventListener('submit',function(e){e.preventDefault();var form=e.target,fn=F[form.getAttribute('data-f')];if(!fn)return;var data={};
+  Array.prototype.forEach.call(form.elements,function(x){if(x.name)data[x.name]=x.value});var r=fn(data,form);if(typeof r==='string'){var er=form.querySelector('.err');if(er)er.textContent=r}});
+document.addEventListener('input',function(e){var t=e.target;
+  if(t.id==='q'){st.q=t.value;$('#list').innerHTML=listHtml()}
+  if(t.id==='pq'){var v=t.value.trim().toLowerCase();$('#plist').innerHTML=pickRows(items().filter(inSec).filter(function(i){return i.name.toLowerCase().indexOf(v)>=0}).sort(function(a,b){return a.name.localeCompare(b.name)}),st.pickType||'in')}
+  if(t.id==='mq'){var form=sh.querySelector('form[data-f=move]');if(form)$('#mprev').textContent=previewText(byId(form.getAttribute('data-id')),st.mtype,t.value)}});
+document.addEventListener('change',function(e){if(e.target.id==='cat'){st.cat=e.target.value;$('#list').innerHTML=listHtml()}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!ov.hidden)closeSheet()});
+window.addEventListener('hashchange',function(){var t=location.hash.slice(1);if(TABS.indexOf(t)>=0&&t!==st.tab){st.tab=t;render()}});
+var _q=A.quickMove;A.quickMove=function(d){st.pickType=d.m;_q(d)};
+window.appBack=function(){if(!ov.hidden){closeSheet();return true}if(st.tab!=='home'){A.tab({t:'home'});return true}return false};
+render();
+window.addEventListener('resize',function(){fitAll()});
+})();
+</script>
+</body>
+</html>
