@@ -133,6 +133,7 @@ nav button[aria-current=page]{color:var(--brand)}
 .toast[hidden]{display:none}
 .note{font-size:13px;color:var(--mute);margin:8px 0 0}
 .mt{margin-top:12px}
+.hide{display:none}
 .sample{display:inline-block;font-size:12px;font-weight:700;color:var(--low);background:var(--lowbg);border-radius:6px;padding:2px 8px;margin-top:8px}
 @media (max-width:359px){.stats{grid-gap:8px}.stat .n{font-size:26px}.bigq{font-size:34px}.seg button{font-size:13px}.rep{grid-template-columns:minmax(0,1fr)}.value{grid-template-columns:minmax(0,1fr)}.split{text-align:left;margin-top:6px}}
 </style>
@@ -272,7 +273,8 @@ function itemForm(id){var i=id?byId(id):{section:st.section==='all'?'mart':st.se
   return head(id?'Edit item':'Add item')+'<form data-f="item" data-id="'+(id||'')+'" novalidate>'+
   '<label for="fn">Item name</label><input id="fn" name="name" required '+(id?'':'autofocus ')+'value="'+esc(i.name)+'" placeholder="e.g. Coca-Cola 1.5L">'+
   '<label>Section</label><div class="typeseg" style="grid-template-columns:repeat(2,minmax(0,1fr))" id="secPick"><button type="button" data-a="pickSec" data-s="mart" aria-pressed="'+(sec==='mart')+'">Mini-mart</button><button type="button" data-a="pickSec" data-s="coffee" aria-pressed="'+(sec==='coffee')+'">Coffee shop</button></div><input type="hidden" name="section" id="fsec" value="'+sec+'">'+
-  '<label for="fc">Category</label><input id="fc" name="category" list="catlist" value="'+esc(i.category)+'" placeholder="Pick or type a category"><datalist id="catlist">'+catOptions(sec)+'</datalist>'+
+  '<label for="fcs">Category</label><select id="fcs" name="category">'+catSelect(sec,i.category)+'</select>'+
+  '<div id="newcatWrap" class="hide"><label for="fcn">New category name</label><input id="fcn" name="newcat" placeholder="e.g. Frozen goods"></div>'+
   '<div class="g2"><div><label for="fu">Unit</label><select id="fu" name="unit">'+UNITS.map(function(u){return '<option'+(u===i.unit?' selected':'')+'>'+u+'</option>'}).join('')+'</select></div>'+
   '<div><label for="fr">Reorder level</label><input id="fr" name="reorder" inputmode="decimal" value="'+esc(nz(i.reorder,''))+'"></div></div>'+
   (id?'':'<label for="fq">Starting stock</label><input id="fq" name="qty" inputmode="decimal" value="0">')+
@@ -282,7 +284,8 @@ function itemForm(id){var i=id?byId(id):{section:st.section==='all'?'mart':st.se
   '<div class="g2"><div><label for="fe">Expiry date <span class="opt">(optional)</span></label><input id="fe" name="expiry" type="date" value="'+esc(i.expiry)+'"></div>'+
   '<div><label for="fsk">SKU or barcode <span class="opt">(optional)</span></label><input id="fsk" name="sku" value="'+esc(i.sku)+'"></div></div>'+
   '<div class="err"></div><button class="btn pri wide">'+(id?'Save changes':'Add item')+'</button></form>'}
-function catOptions(sec){var set={};CATS[sec].forEach(function(c){set[c]=1});items().forEach(function(i){if(i.section===sec&&i.category)set[i.category]=1});return Object.keys(set).map(function(c){return '<option value="'+esc(c)+'">'}).join('')}
+function catList(sec,cur){var set={},out=[];CATS[sec].forEach(function(c){if(!set[c]){set[c]=1;out.push(c)}});items().forEach(function(i){if(i.section===sec&&i.category&&!set[i.category]){set[i.category]=1;out.push(i.category)}});if(cur&&!set[cur])out.push(cur);return out}
+function catSelect(sec,cur){return '<option value="">Choose a category</option>'+catList(sec,cur).map(function(c){return '<option value="'+esc(c)+'"'+(c===cur?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'<option value="__new">+ New category\u2026</option>'}
 
 function moveHtml(id,type){var i=byId(id);st.mtype=type;
   return head(esc(i.name),'Now '+fq(i.qty)+' '+esc(i.unit))+'<form data-f="move" data-id="'+id+'" novalidate>'+
@@ -313,13 +316,19 @@ function reportData(){var s=periodStart();var mv=db.moves.filter(function(m){var
   var per={};mv.forEach(function(m){var p=per[m.item]||(per[m.item]={inq:0,outq:0,adj:0,inv:0,outv:0});var c=+m.cost||0;
     if(m.type==='in'){p.inq+=m.delta;p.inv+=m.delta*c}else if(m.type==='out'){p.outq-=m.delta;p.outv+=(-m.delta)*c}else p.adj+=m.delta});
   var inv=0,outv=0,loss=0,reasons={};mv.forEach(function(m){var c=+m.cost||0;if(m.type==='in')inv+=m.delta*c;if(m.type==='out'){outv+=-m.delta*c;reasons[m.reason]=(reasons[m.reason]||0)+(-m.delta*c);if(LOSS.indexOf(m.reason)>=0)loss+=-m.delta*c}});
-  return {mv:mv,per:per,inv:inv,outv:outv,loss:loss,reasons:reasons}}
+  /* estimated profit: stock out marked Sold x (selling price - cost); price and cost as recorded with the movement, else the item's current values */
+  var sales=0,profit=0,noPrice={},prof={};mv.forEach(function(m){if(m.type!=='out'||m.reason!=='Sold')return;var i=byId(m.item),q=-m.delta;
+    var pr=m.price!==undefined&&m.price!==''?+m.price:(i.price!==''&&i.price!==undefined?+i.price:NaN);var c=m.cost!==''&&m.cost!==undefined?+m.cost:(+i.cost||0);
+    if(!(pr>=0)){noPrice[m.item]=1;return}var p=prof[m.item]||(prof[m.item]={q:0,sales:0,profit:0});p.q+=q;p.sales+=q*pr;p.profit+=q*(pr-c);sales+=q*pr;profit+=q*(pr-c)});
+  return {mv:mv,per:per,inv:inv,outv:outv,loss:loss,reasons:reasons,sales:sales,profit:profit,prof:prof,noPrice:Object.keys(noPrice).length}}
 function vReports(){if(!db.items.length)return '<div class="empty"><h2>No data yet</h2><p>Reports appear once items and stock movements are recorded.</p></div>';
   var R=reportData(),its=items().filter(inSec).sort(function(a,b){return a.name.localeCompare(b.name)});
-  var V=[['levels','Stock levels'],['moves','Movements'],['low','Low stock'],['value','Value']];
+  var V=[['levels','Stock levels'],['moves','Movements'],['profit','Profit'],['low','Low stock'],['value','Value']];
   var body='';
   if(st.rview==='levels')body=its.length?'<ul class="rlist">'+its.map(function(i){return '<li><div class="t"><b>'+esc(i.name)+'</b>'+tagsHtml(i,false)+'</div><div class="nums"><span>On hand<b>'+fq(i.qty)+' '+esc(i.unit)+'</b></span><span>Reorder at<b>'+fq(i.reorder)+'</b></span><span>Value<b>'+peso(Math.max(i.qty,0)*(+i.cost||0))+'</b></span></div></li>'}).join('')+'</ul>':'<p class="lead">No items in this section.</p>';
   if(st.rview==='moves'){var ids=Object.keys(R.per);body=ids.length?'<ul class="rlist">'+ids.map(function(id){var i=byId(id),p=R.per[id];return '<li><div class="t"><b>'+esc(i.name)+'</b><span class="qty"><b>'+fq(i.qty)+'</b><span>'+esc(i.unit)+'</span></span></div><div class="nums"><span>In<b class="pos">+'+fq(p.inq)+'</b></span><span>Out<b class="neg">−'+fq(p.outq)+'</b></span><span>Count adj.<b class="adj">'+(p.adj>0?'+':p.adj<0?'−':'±')+fq(Math.abs(p.adj))+'</b></span></div></li>'}).join('')+'</ul>':'<p class="lead">No stock movements in this period.</p>'}
+  if(st.rview==='profit'){var pids=Object.keys(R.prof).sort(function(a,b){return R.prof[b].profit-R.prof[a].profit});
+    body=pids.length?'<ul class="rlist">'+pids.map(function(id){var i=byId(id),p=R.prof[id];return '<li><div class="t"><b>'+esc(i.name)+'</b><span class="tag '+i.section+'">'+SEC[i.section]+'</span></div><div class="nums"><span>Sold<b>'+fq(p.q)+' '+esc(i.unit)+'</b></span><span>Sales<b>'+peso(p.sales)+'</b></span><span>Profit<b class="'+(p.profit<0?'neg':'pos')+'">'+peso(p.profit)+'</b></span></div></li>'}).join('')+'</ul>':'<p class="lead">No items marked Sold in this period. Record sales with Stock out and the reason Sold.</p>'}
   if(st.rview==='low'){var L=its.filter(function(i){return status(i)!=='ok'||expiring(i)});body=L.length?'<ul class="rlist">'+L.map(function(i){return '<li><div class="t"><b>'+esc(i.name)+'</b>'+tagsHtml(i,false)+'</div><div class="nums"><span>On hand<b>'+fq(i.qty)+' '+esc(i.unit)+'</b></span><span>Reorder at<b>'+fq(i.reorder)+'</b></span><span>Supplier<b>'+esc(i.supplier||'—')+'</b></span></div></li>'}).join('')+'</ul>':'<p class="lead">Nothing is low, out of stock or expiring.</p>'}
   if(st.rview==='value'){var cat={};its.forEach(function(i){var k=i.category||'Uncategorized';cat[k]=cat[k]||{v:0,s:i.section};cat[k].v+=Math.max(i.qty,0)*(+i.cost||0)});var ks=Object.keys(cat).sort(function(a,b){return cat[b].v-cat[a].v});var mx=Math.max.apply(null,[1].concat(ks.map(function(k){return cat[k].v})));
     var rs=Object.keys(R.reasons).sort(function(a,b){return R.reasons[b]-R.reasons[a]});var mr=Math.max.apply(null,[1].concat(rs.map(function(k){return R.reasons[k]})));
@@ -327,18 +336,23 @@ function vReports(){if(!db.items.length)return '<div class="empty"><h2>No data y
     '<h3>Stock out by reason ('+periodName().toLowerCase()+')</h3><div class="bars card">'+(rs.length?rs.map(function(k){return '<div class="bar"><div class="lab"><span>'+esc(k)+'</span><span>'+peso(R.reasons[k])+'</span></div><i style="width:'+(R.reasons[k]/mr*100).toFixed(1)+'%"></i></div>'}).join(''):'<p class="lead">No stock out in this period.</p>')+'</div><p class="note">Values use the cost per unit recorded with each movement.</p>'}
   return '<div class="chips">'+PERIODS.map(function(p){return '<button class="chip" data-a="period" data-p="'+p[0]+'" aria-pressed="'+(st.period===p[0])+'">'+p[1]+'</button>'}).join('')+'</div>'+
   '<div class="rep"><div><span class="k">Stock in ('+periodName().toLowerCase()+')</span><span class="v fit">'+peso(R.inv)+'</span></div><div><span class="k">Stock out at cost</span><span class="v fit">'+peso(R.outv)+'</span></div>'+
-  '<div><span class="k">Losses (spoiled, damaged)</span><span class="v fit" style="color:var(--out)">'+peso(R.loss)+'</span></div><div><span class="k">Movements recorded</span><span class="v fit">'+R.mv.length+'</span></div></div>'+
+  '<div><span class="k">Losses (spoiled, damaged)</span><span class="v fit" style="color:var(--out)">'+peso(R.loss)+'</span></div><div><span class="k">Movements recorded</span><span class="v fit">'+R.mv.length+'</span></div>'+
+  '<div><span class="k">Sales (items sold)</span><span class="v fit">'+peso(R.sales)+'</span></div><div><span class="k">Estimated profit</span><span class="v fit" style="color:var(--ok)">'+peso(R.profit)+'</span></div></div>'+
+  '<p class="note">Estimated profit = items marked Sold \u00d7 (selling price \u2212 cost).'+(R.noPrice?' '+R.noPrice+(R.noPrice===1?' sold item has':' sold items have')+' no selling price and '+(R.noPrice===1?'is':'are')+' not counted.':'')+'</p>'+
   '<div class="chips mt">'+V.map(function(x){return '<button class="chip" data-a="rview" data-v="'+x[0]+'" aria-pressed="'+(st.rview===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+body+
   '<div class="share"><button class="btn pri" data-a="shareCsv">Share as CSV</button><button class="btn ghost" data-a="copyCsv">Copy CSV</button></div><p class="note">The CSV opens in Excel or Google Sheets.</p>'}
 function csvCell(v){v=String(v===undefined||v===null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function csv(){var its=items().filter(inSec).sort(function(a,b){return a.name.localeCompare(b.name)}),rows,R=reportData();
-  if(st.rview==='moves'){rows=[['Date','Time','Item','Section','Type','Reason','Quantity','Unit','Stock after','Cost per unit','Recorded by','Note']];
+  if(st.rview==='profit'){rows=[['Item','Section','Quantity sold','Unit','Sales','Estimated profit']];
+    Object.keys(R.prof).sort(function(a,b){return R.prof[b].profit-R.prof[a].profit}).forEach(function(id){var i=byId(id),p=R.prof[id];rows.push([i.name,SEC[i.section],r2(p.q),i.unit,r2(p.sales),r2(p.profit)])});
+    rows.push(['Total','','','',r2(R.sales),r2(R.profit)])}
+  else if(st.rview==='moves'){rows=[['Date','Time','Item','Section','Type','Reason','Quantity','Unit','Stock after','Cost per unit','Recorded by','Note']];
     R.mv.forEach(function(m){var i=byId(m.item),d=new Date(m.t);rows.push([dkey(d),hm(d),i.name,SEC[i.section],TYPE[m.type],m.reason,r2(m.delta),i.unit,r2(m.after),nz(m.cost,''),m.by||'',m.note||''])})}
   else{var L=st.rview==='low'?its.filter(function(i){return status(i)!=='ok'||expiring(i)}):its;
     rows=[['Item','Section','Category','On hand','Unit','Reorder level','Status','Cost per unit','Stock value','Supplier','Expiry','SKU']];
     L.forEach(function(i){var s=status(i);rows.push([i.name,SEC[i.section],i.category||'',r2(i.qty),i.unit,r2(i.reorder),s==='out'?'Out of stock':s==='low'?'Low stock':'In stock',nz(i.cost,''),r2(Math.max(i.qty,0)*(+i.cost||0)),i.supplier||'',i.expiry||'',i.sku||''])})}
   return rows.map(function(r){return r.map(csvCell).join(',')}).join('\n')}
-function csvName(){return db.settings.business+' - '+({levels:'Stock levels',moves:'Stock movements',low:'Low stock',value:'Stock levels'})[st.rview]+' - '+dkey(new Date())}
+function csvName(){return db.settings.business+' - '+({levels:'Stock levels',moves:'Stock movements',profit:'Estimated profit',low:'Low stock',value:'Stock levels'})[st.rview]+' - '+dkey(new Date())}
 
 /* ---------- Settings ---------- */
 function vSettings(){var n=items().length,m=db.moves.length;
@@ -350,7 +364,7 @@ function vSettings(){var n=items().length,m=db.moves.length;
   '<button class="btn ghost wide mt" data-a="restore">Restore from backup</button></div>'+
   '<h3>Demo data</h3><div class="card"><p class="lead" style="margin:0">Load sample items and movements to try the app or to demonstrate it. This replaces the current data.</p><button class="btn ghost wide mt" data-a="sampleAsk">Load sample data</button>'+
   '<button class="btn danger wide mt" data-a="clearAsk">Delete all data</button></div>'+
-  '<p class="note">Town Mart Inventory 1.0 · Works offline · Records are stored on this device.</p>'}
+  '<p class="note">Town Mart Inventory 1.1 · Works offline · Records are stored on this device.</p>'}
 
 /* ---------- sample data ---------- */
 function sample(){var now=Date.now(),D=864e5,t=new Date(),ex=function(d){return dkey(new Date(t.getTime()+d*D))};
@@ -365,7 +379,7 @@ function sample(){var now=Date.now(),D=864e5,t=new Date(),ex=function(d){return 
     var start=r[4]+ (k%3===0?10:k%3===1?6:3);
     d.moves.push({id:uid(),t:now-13*D+k*3600e3,item:it.id,type:'in',delta:start,after:start,reason:'Delivery or purchase',note:'Opening stock',by:'Angel',cost:r[6]});it.qty=start;
     var out=r2(start-r[4]);if(out>0){var reason=r[1]==='coffee'?'Used in coffee shop':'Sold';if(k===4)reason='Spoiled or expired';
-      d.moves.push({id:uid(),t:now-(k%5+1)*D,item:it.id,type:'out',delta:-out,after:r[4],reason:reason,note:'',by:'Angel',cost:r[6]});it.qty=r[4]}});
+      d.moves.push({id:uid(),t:now-(k%5+1)*D,item:it.id,type:'out',delta:-out,after:r[4],reason:reason,note:'',by:'Angel',cost:r[6],price:r[7]||''});it.qty=r[4]}});
   return d}
 
 /* ---------- render ---------- */
@@ -401,7 +415,7 @@ var A={
   newItem:function(){sheet(function(){return itemForm()})},
   editItem:function(d){sheet(function(){return itemForm(d.id)})},
   openItem:function(d){openItem(d.id)},
-  pickSec:function(d){$('#fsec').value=d.s;Array.prototype.forEach.call(document.querySelectorAll('#secPick button'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-s')===d.s))});$('#catlist').innerHTML=catOptions(d.s)},
+  pickSec:function(d){$('#fsec').value=d.s;Array.prototype.forEach.call(document.querySelectorAll('#secPick button'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-s')===d.s))});var cs=$('#fcs');if(cs){var keep=cs.value!=='__new'&&catList(d.s,'').indexOf(cs.value)>=0?cs.value:'';cs.innerHTML=catSelect(d.s,keep);$('#newcatWrap').className='hide'}},
   move:function(d){sheet(function(){return moveHtml(d.id,d.m)})},
   mtype:function(d){var form=sh.querySelector('form[data-f=move]'),i=byId(form.getAttribute('data-id'));st.mtype=d.m;
     Array.prototype.forEach.call(sh.querySelectorAll('.typeseg button'),function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-m')===d.m))});
@@ -424,7 +438,8 @@ var F={
     var reorder=f.reorder===''?0:num(f.reorder);if(!(reorder>=0))return 'Reorder level must be 0 or more.';
     var cost=f.cost===''?'':num(f.cost),price=f.price===''?'':num(f.price);if(cost!==''&&!(cost>=0))return 'Check the cost.';if(price!==''&&!(price>=0))return 'Check the selling price.';
     var dup=items().filter(function(i){return i.id!==id&&i.section===f.section&&i.name.toLowerCase()===name.toLowerCase()});if(dup.length)return 'An item with this name already exists in '+SEC[f.section]+'.';
-    var rec={name:name,section:f.section==='coffee'?'coffee':'mart',category:f.category.trim(),unit:f.unit,reorder:r2(reorder),cost:cost===''?'':r2(cost),price:price===''?'':r2(price),supplier:f.supplier.trim(),expiry:f.expiry||'',sku:f.sku.trim(),updated:Date.now()};
+    var category=f.category==='__new'?(f.newcat||'').trim():(f.category||'').trim();if(f.category==='__new'&&!category)return 'Type the name of the new category.';
+    var rec={name:name,section:f.section==='coffee'?'coffee':'mart',category:category,unit:f.unit,reorder:r2(reorder),cost:cost===''?'':r2(cost),price:price===''?'':r2(price),supplier:f.supplier.trim(),expiry:f.expiry||'',sku:f.sku.trim(),updated:Date.now()};
     if(id){var i=byId(id);Object.keys(rec).forEach(function(k){i[k]=rec[k]});delete i.sample;if(save()){render();openItem(id);toast('Saved')}return}
     var q=f.qty===''?0:num(f.qty);if(!(q>=0))return 'Starting stock must be 0 or more.';
     rec.id=uid();rec.qty=0;rec.created=Date.now();db.items.push(rec);
@@ -437,7 +452,7 @@ var F={
     var delta=type==='in'?q:type==='out'?-q:r2(q-i.qty);if(type==='count'&&delta===0){closeSheet();openItem(id);toast('Count matches the record');return}
     var cost=+i.cost||0;if(type==='in'&&f.ucost!==''){var uc=num(f.ucost);if(!(uc>=0))return 'Check the cost per unit.';cost=uc;i.cost=r2(uc)}
     i.qty=r2(i.qty+delta);i.updated=Date.now();var by=f.by.trim();if(by)db.settings.staff=by;
-    db.moves.push({id:uid(),t:Date.now(),item:id,type:type,delta:r2(delta),after:i.qty,reason:type==='count'?'Physical count':f.reason,note:f.note.trim(),by:by,cost:cost?r2(cost):''});
+    db.moves.push({id:uid(),t:Date.now(),item:id,type:type,delta:r2(delta),after:i.qty,reason:type==='count'?'Physical count':f.reason,note:f.note.trim(),by:by,cost:cost?r2(cost):'',price:(type==='out'&&i.price!=='')?r2(i.price):''});
     if(save()){render();openItem(id);toast(TYPE[type]+' saved. Now '+fq(i.qty)+' '+i.unit)}},
   settings:function(f){db.settings.business=f.business.trim()||'Town Mart & Coffee Shop Tagpuan';db.settings.staff=f.staff.trim();commit('Settings saved')},
   restore:function(f){var o;try{o=JSON.parse(f.json)}catch(e){return 'This is not a valid backup. Paste the whole backup text.'}
@@ -454,7 +469,8 @@ document.addEventListener('input',function(e){var t=e.target;
   if(t.id==='q'){st.q=t.value;$('#list').innerHTML=listHtml()}
   if(t.id==='pq'){var v=t.value.trim().toLowerCase();$('#plist').innerHTML=pickRows(items().filter(inSec).filter(function(i){return i.name.toLowerCase().indexOf(v)>=0}).sort(function(a,b){return a.name.localeCompare(b.name)}),st.pickType||'in')}
   if(t.id==='mq'){var form=sh.querySelector('form[data-f=move]');if(form)$('#mprev').textContent=previewText(byId(form.getAttribute('data-id')),st.mtype,t.value)}});
-document.addEventListener('change',function(e){if(e.target.id==='cat'){st.cat=e.target.value;$('#list').innerHTML=listHtml()}});
+document.addEventListener('change',function(e){if(e.target.id==='cat'){st.cat=e.target.value;$('#list').innerHTML=listHtml()}
+  if(e.target.id==='fcs'){var nw=e.target.value==='__new';$('#newcatWrap').className=nw?'':'hide';if(nw){var n=$('#fcn');if(n)try{n.focus()}catch(x){}}}});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!ov.hidden)closeSheet()});
 window.addEventListener('hashchange',function(){var t=location.hash.slice(1);if(TABS.indexOf(t)>=0&&t!==st.tab){st.tab=t;render()}});
 var _q=A.quickMove;A.quickMove=function(d){st.pickType=d.m;_q(d)};
